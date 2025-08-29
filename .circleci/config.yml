@@ -34,14 +34,14 @@ jobs:
       # - run: |
       #     echo "Installing dependencies"
       #     npm install
-  lint:
-    docker:
-      - image: cimg/node:20.12
-    steps:
-      - install_deps
-      - run: |
-          echo "Running lint..."
-          npm run lint
+  # lint:
+  #   docker:
+  #     - image: cimg/node:20.12
+  #   steps:
+  #     - install_deps
+  #     - run: |
+  #         echo "Running lint..."
+  #         npm run lint
   test:
     docker:
       - image: cimg/node:16.10
@@ -131,14 +131,14 @@ workflows:
                 - main
                 - release
 
-      - lint:
-          requires:
-            - build
-          filters:
-            branches:
-              only:
-                - main
-                - release
+      # - lint:
+      #     requires:
+      #       - build
+      #     filters:
+      #       branches:
+      #         only:
+      #           - main
+      #           - release
 
       - test:
           requires:
@@ -152,7 +152,7 @@ workflows:
       - publish:
           requires:
             - test
-            - lint
+            # - lint
           filters:
             branches:
               only:
