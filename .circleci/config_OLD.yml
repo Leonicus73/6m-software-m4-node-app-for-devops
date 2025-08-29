@@ -1,0 +1,50 @@
+version: 2.1
+orbs:
+  node: circleci/node@5.0.1
+  docker: circleci/docker@2.1.4
+  
+jobs:
+  build:
+    docker:
+      - image: cimg/node:16.10
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+      - run: |
+          echo "Installing dependencies..."
+          npm install
+  test:
+    docker:
+      - image: cimg/node:16.10
+    steps:
+      - checkout
+      - node/install-packages:
+          pkg-manager: npm
+      - run: |
+          echo "Running tests..."
+          npm run test
+  
+  publish:
+    executor: docker/docker
+    steps:
+      - setup_remote_docker
+      - checkout
+      - docker/check:
+          docker-username: DOCKER_LOGIN  # DOCKER_LOGIN is the default value, if it exists, it automatically would be used.
+          docker-password: DOCKER_PASSWORD  # DOCKER_PASSWORD is the default value
+      - docker/build:
+          image: leonicus/test_repository
+      - docker/push:
+          image: leonicus/test_repository
+
+workflows:
+  simple_workflow:
+    jobs:
+      - build
+      - test:
+          requires:
+            - build
+      - publish:
+          requires:
+            - test

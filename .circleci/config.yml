@@ -1,50 +1,167 @@
+# This file tells CircleCI what to do
 version: 2.1
 orbs:
   node: circleci/node@5.0.1
   docker: circleci/docker@2.1.4
-  
-jobs:
-  build:
-    docker:
-      - image: cimg/node:16.10
+  # heroku: circleci/heroku@2.0.0
+
+# commands - resuable sets of steps
+commands:
+  install_deps:
     steps:
       - checkout
       - node/install-packages:
           pkg-manager: npm
+
+# Each job has 2 parts - 1. Executor, 2. Steps
+jobs:
+  build:
+    # executor:
+    #   name: docker
+    #   docker:
+    #     - image: cimg/node:16.10
+    # Means spin up a container using node:16.10 and run the steps
+    # Shorthand for the executor
+    docker:
+      - image: cimg/node:16.10
+    steps:
+      - checkout
+      # Using node/install-packages is better than npm install
+      # because it gives you CircleCI optimization (caching, lockfile, concise)
+      - node/install-packages:
+          pkg-manager: npm
+      # Without orbs, we have to run everything manually using run
+      # - run: |
+      #     echo "Installing dependencies"
+      #     npm install
+  lint:
+    docker:
+      - image: cimg/node:20.12
+    steps:
+      - install_deps
       - run: |
-          echo "Installing dependencies..."
-          npm install
+          echo "Running lint..."
+          npm run lint
   test:
     docker:
       - image: cimg/node:16.10
     steps:
-      - checkout
-      - node/install-packages:
-          pkg-manager: npm
+      - install_deps
       - run: |
           echo "Running tests..."
           npm run test
-  
+  # this job needs to build and push Docker images 
   publish:
+    # CircleCI provides a special executor that allows Docker-in-Docker
+    # so that you run docker build, push, etc
     executor: docker/docker
     steps:
+      # enables remote Docker engine
       - setup_remote_docker
       - checkout
+      # docker/check does 3 things
+      # 1. Verifies Docker is working
+      # 2. Authenticates with Docker Hub using your credentials
+      # 3. Sets up Docker client for operations
+      # Ensure that DOCKER_LOGIN and DOCKER_PASSWORD in CircleCI Project Settings
+      # Without this, we have manually run `docker login`
       - docker/check:
           docker-username: DOCKER_LOGIN  # DOCKER_LOGIN is the default value, if it exists, it automatically would be used.
-          docker-password: DOCKER_PASSWORD  # DOCKER_PASSWORD is the default value
+          docker-password: DOCKER_PASSWORD  # DOCKER_PASSWORD is the default value      
+      # Use Docker orb to build and push image
       - docker/build:
-          image: leonicus/test_repository
+          image: leonicus/test-repository
+          # tag with current git revision (commit hash) and latest tag
+          tag: << pipeline.git.revision >>,latest
       - docker/push:
-          image: leonicus/test_repository
+          image: leonicus/test-repository
+          tag: << pipeline.git.revision >>,latest
+  # deploy:
+  #   docker:
+  #     - image: cimg/node:16.10
+  #   steps:
+  #     - setup_remote_docker
+  #     - heroku/install
+  #     - checkout
+  #     - docker/check
+  #     - run:
+  #         name: Deploy to Heroku
+  #         command: |
+  #           echo "Deploying pre-built image to Heroku..."
+  #           heroku container:login
+  #           # Use Heroku container stack
+  #           heroku stack:set container --app thinkdaniel-su-devops
+  #           # Pull image that was built in publish job
+  #           docker pull thinkdaniel/test-repository:<< pipeline.git.revision >>
+  #           # Tag it for Heroku
+  #           docker tag thinkdaniel/test-repository:<< pipeline.git.revision >> registry.heroku.com/thinkdaniel-su-devops/web
+  #           # Push to Heroku Container Registry
+  #           docker push registry.heroku.com/thinkdaniel-su-devops/web
+  #           # Release the pushed Docker image
+  #           heroku container:release web --app thinkdaniel-su-devops
 
+  # deploy:
+  #   docker:
+  #     - image: cimg/node:16.10
+  #   steps:
+  #     - setup_remote_docker
+  #     - heroku/install
+  #     - checkout
+  #     - run:
+  #         name: Heroku Container Push
+  #         command: |
+  #           heroku container:login
+  #           # Use the Heroku container stack
+  #           # Special container stack is required to deploy Docker images
+  #           heroku stack:set container -a thinkdaniel-su-devops
+  #           # Build Docker image and push to Heroku container registry
+  #           heroku container:push web -a thinkdaniel-su-devops
+  #           # Release the Docker image
+  #           heroku container:release web -a thinkdaniel-su-devops
+
+
+# Define the workflow for job execution order
 workflows:
   simple_workflow:
     jobs:
-      - build
+      - build:
+          filters:
+            branches:
+              only:
+                - main
+                - release
+
+      - lint:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - main
+                - release
+
       - test:
           requires:
             - build
+          filters:
+            branches:
+              only:
+                - main
+                - release
+
       - publish:
           requires:
             - test
+            - lint
+          filters:
+            branches:
+              only:
+                - release
+
+      # - deploy:
+      #     requires:
+      #       - publish
+      #     filters:
+      #       branches:
+      #         only:
+      #           - release
