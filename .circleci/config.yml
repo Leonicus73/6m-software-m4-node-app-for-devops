@@ -27,19 +27,19 @@ jobs:
           npm run test
 
   scan:
-  docker:
-    - image: cimg/node:16.10
-  steps:
-    - checkout
-    - snyk/install
-    - run:
-        name: Docker Login (secure)
-        command: echo "$DOCKERHUB_PASSWORD" | docker login --username "$DOCKERHUB_LOGIN" --password-stdin
-    - run: docker build -t leonicus/test_repository .
-    - snyk/scan:
-        docker-image-name: leonicus/test_repository
-        fail-on-issues: false
-        severity-threshold: high
+    docker:
+      - image: cimg/node:16.10
+    steps:
+      - checkout
+      - snyk/install
+      - run:
+          name: Docker Login (secure)
+          command: echo "$DOCKERHUB_PASSWORD" | docker login --username "$DOCKERHUB_LOGIN" --password-stdin
+      - run: docker build -t leonicus/test_repository .
+      - snyk/scan:
+          docker-image-name: leonicus/test_repository
+          fail-on-issues: false
+          severity-threshold: high
 
   publish:
     executor: docker/docker
