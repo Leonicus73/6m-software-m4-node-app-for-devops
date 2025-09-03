@@ -32,10 +32,11 @@ jobs:
     steps:
       - checkout
       - snyk/install
-      - run:
-          name: Docker Login (secure)
-          command: echo "$DOCKERHUB_PASSWORD" | docker login --username "$DOCKERHUB_LOGIN" --password-stdin
-      - run: docker build -t leonicus/test_repository .
+      - docker/check:
+          docker-username: DOCKERHUB_LOGIN  # DOCKER_LOGIN is the default value, if it exists, it automatically would be used.
+          docker-password: DOCKERHUB_PASSWORD  # DOCKER_PASSWORD is the default value
+      - docker/build:
+          image: leonicus/test_repository
       - snyk/scan:
           docker-image-name: leonicus/test_repository
           fail-on-issues: false
