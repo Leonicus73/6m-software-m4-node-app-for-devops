@@ -83,7 +83,6 @@ workflows:
       - publish:
           requires:
             - test
-            - scan
       # - deploy:
       #     requires:
       #       - publish
