@@ -35,9 +35,9 @@ jobs:
       - docker/check:
           docker-username: DOCKERHUB_LOGIN  # DOCKER_LOGIN is the default value, if it exists, it automatically would be used.
           docker-password: DOCKERHUB_PASSWORD  # DOCKER_PASSWORD is the default value
-      - run: docker build -t $DOCKERHUB_LOGIN/test_repository .
+      - run: docker build -t leonicus/test_repository .
       - snyk/scan:
-          docker-image-name: $DOCKERHUB_LOGIN/test_repository
+          docker-image-name: leonicus/test_repository
           # The "fail-on-issues: false" option makes the scan report issues but always exit with code 0
           # This allows the pipeline to continue even if vulnerabilities are found
           fail-on-issues: false
