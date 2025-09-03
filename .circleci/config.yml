@@ -30,12 +30,16 @@ jobs:
     docker:
       - image: cimg/node:16.10
     steps:
+      - setup_remote_docker
       - checkout
-      - docker/check:
-          docker-username: DOCKER_LOGIN  # DOCKER_LOGIN is the default value, if it exists, it automatically would be used.
-          docker-password: DOCKER_PASSWORD  # DOCKER_PASSWORD is the default value
-      - docker/build:
-          image: leonicus/test_repository
+      - snyk/install
+      - run:
+          name: Docker Login (secure)
+          command: |
+            echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_LOGIN" --password-stdin
+      - run:
+          name: Build Docker Image
+          command: docker build -t leonicus/test_repository .
       - snyk/scan:
           docker-image-name: leonicus/test_repository
           fail-on-issues: false
